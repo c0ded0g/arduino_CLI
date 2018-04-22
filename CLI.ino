@@ -9,7 +9,12 @@
 */
 
 // PIN ASSIGNMENTS
-const int pin_A0 = A0;
+// Analog Pins as an array, so they can be accessed in a loop
+static const uint8_t AnPin[] = {A0, A1, A2, A3, A4, A5};
+static const String AnPinName[] = {"A0", "A1", "A2", "A3", "A4", "A5"};
+static const String AnValName[] = {"V0", "V1", "V2", "V3", "V4", "V5"};
+
+
 const int pin_CLI = A1;    // HT9032 data pin (Vout)
 const int pin_A2 = A2;
 const int pin_RING = A3;   // HT9032/ring sense
@@ -30,6 +35,12 @@ const int pin_10 = 10;
 const int pin_LED = 11;    // visual indicator incoming call
 const int pin_12 = 12;
 const int pin_13 = 13;
+
+// array containing analog pin values
+int AnVal[] = {0,0,0,0,0,0};  // A0..A5
+int outVal[] = {0,0,0,0,0,0}; // mapped equivalents
+
+int outputValue = 0;        // value output to the PWM (analog out)
 
 // INCLUDES
 #include <TimerOne.h>
@@ -72,6 +83,65 @@ void setup() {
 }
 
 void loop() {
+  // select only one loop ...
+  testLoop1();
+  //testLoop2();
+  //CLIloop();
+}
+
+void testLoop1() {
+  // monitor an analog input to vary the brightness of an LED
+  // send parameters to the serial port in JSON format (single line) for the RPi to read
+
+  // read all analog pins  
+  // note AN0 is connected to a pot
+  for (int i=0; i<=5; i++) {
+    AnVal[i] = analogRead(AnPin[i]);
+  }
+  
+  // continually read An pins for a second
+  for (int i=0; i <=20; i++) {
+    for (int j=0; j<=5; j++) {
+      AnVal[j] = analogRead(AnPin[j]);
+      outVal[j] = map(AnVal[j], 0, 1023, 0, 255);
+      if (outVal[1] > 128) {
+        analogWrite(pin_9, outVal[0]);
+      } else {
+        analogWrite(pin_9, 0);
+      }
+      //outputValue = map(AnVal[1], 0, 1023, 0, 255);  
+      //analogWrite(pin_9, outputValue);           
+      delay(10);
+    }
+  }
+  
+  // once a second send the values to the serial port, in JSON form
+  for (int i=0; i<=5; i++) {
+    Serial.println(formJSONpair(AnPinName[i],String(AnVal[i])));
+    Serial.println(formJSONpair(AnValName[i],String(outVal[i])));
+  }  
+//  Serial.println(formJSONpair("V1",String(outputValue)));
+}
+
+String formJSONpair(String n, String v) {
+  // given n and v, return {"n":v}
+  String s = String("{\""+n+"\":"+v+"}");
+  return s;
+}
+String addJSONpair(String j, String n, String v) {
+  // given j (of the form {...}), n and v, return {..., "n":v}
+  // i.e. add another pair to an existing JSON object
+  String s = j;
+  int length = s.length();
+  s[length-1] = ',';
+  s = s+" \""+n+"\":"+v+"}\0";
+  return s;
+}
+
+void testLoop2() {
+}
+
+void CLIloop() {
   char ringing;
   char serialChar;
   char ch;
@@ -86,13 +156,15 @@ void loop() {
   String s;
   int i;
   
-  a = a+1;
-  sprintf(dataString,"%02X",a);
-  Serial.println(dataString);
-  digitalWrite(led,HIGH);
-  delay(50);
-  digitalWrite(led,LOW);
-  delay(950);
+//  a = a+1;
+//  Serial.println(a);
+//  digitalWrite(led,HIGH);
+//  delay(50);
+//  digitalWrite(led,LOW);
+//  delay(950);
+  
+  
+  
   
   ringing = digitalRead(A3);
   if (ringing == 1) {
